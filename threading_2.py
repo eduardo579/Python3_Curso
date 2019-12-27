@@ -1,38 +1,62 @@
 import threading
+import queue
 import time
 
 banderaSalida = 0
 
 class miHilo(threading.Thread):
-    def __init__(self, hiloID, nombre, cont):
+    def __init__(self, hiloID, nombre, q):
         threading.Thread.__init__(self)
         self.hiloID = hiloID
         self.nombre = nombre
-        self.cont = cont
+        self.q = q
     
     def run(self):
         print("Empezando " + self.nombre)
-        threadLock.acquire()
-        imprimir_tiempo(self.nombre, self.cont, 3)
-        threadLock.release()
+        process_data(self.nombre, self.q)
+        print("Saliendo " + self.nombre)
 
-def imprimir_tiempo(hiloNombre, delay, cont):
-    while cont:
-        time.sleep(delay)
-        print("%s: %s" % (hiloNombre, time.ctime(time.time())))
-        cont -= 1
+def process_data(hiloNombre, q):
+    while not banderaSalida:
+        queueLock.acquire()
 
-threadLock = threading.Lock()
+        if not workQueue.empty():
+            data = q.get()
+            queueLock.release()
+            print("%s procesando %s" % (hiloNombre, data))
+        
+        else:
+            queueLock.release()
+            time.sleep(1)
+
+
+hiloLista = ["Hilo_1", "Hilo_2", "Hilo_3"]
+nombreLista = ["Uno", "Dos", "Tres", "Cuatro", "Cinco"]
+
+queueLock = threading.Lock()
+workQueue = queue.Queue(10)
+
 hilos = []
 
-hilo1 = miHilo(1, "Hilo-1", 1)
-hilo2 = miHilo(2, "Hilo-2", 2)
+hiloID = 1
 
-hilo1.start()
-hilo2.start()
+for tNombre in hiloLista:
+    hilo = miHilo(hiloID, tNombre, workQueue)
+    hilo.start()
+    hilos.append(hilo)
+    hiloID += 1
 
-hilos.append(hilo1)
-hilos.append(hilo2)
+queueLock.acquire()
+
+for palabra in nombreLista:
+    workQueue.put(palabra)
+
+queueLock.release()
+
+while not workQueue.empty():
+    pass
+
+banderaSalida = 1
 
 for t in hilos:
     t.join()
